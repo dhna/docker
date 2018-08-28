@@ -1,5 +1,39 @@
-FROM openjdk:8-jdk
+FROM ubuntu:16.04
 
+# OpenJdk-8
+RUN apt-get update && \
+	apt-get install -y unzip && \
+	apt-get install -y wget && \
+	apt-get install -y vim && \
+	apt-get install -y openjdk-8-jdk
+ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
+
+# Gradle
+ADD https://services.gradle.org/distributions/gradle-4.1-all.zip /opt/
+RUN unzip /opt/gradle-4.1-all.zip -d /opt/gradle
+ENV GRADLE_HOME /opt/gradle/gradle-4.1-all
+ENV PATH $GRADLE_HOME/bin:$PATH
+
+# Android
+ENV ANDROID_HOME /opt/android-sdk
+RUN mkdir ${ANDROID_HOME}
+RUN wget https://dl.google.com/android/repository/sdk-tools-linux-4333796.zip && \
+	unzip sdk-tools-linux-4333796.zip -d ${ANDROID_HOME} && \
+	rm -f sdk-tools-linux-4333796.zip
+ENV PATH ${ANDROID_HOME}/tools:${ANDROID_HOME}/tools/bin:$PATH
+RUN yes | sdkmanager --licenses
+RUN sdkmanager --sdk_root=${ANDROID_HOME} "platform-tools" \
+	"build-tools;26.0.3" "build-tools;27.0.3" \
+	"extras;android;m2repository" "extras;google;instantapps" "extras;google;google_play_services" \
+	"extras;google;m2repository" "extras;google;market_apk_expansion" "extras;google;market_licensing" \
+	"extras;m2repository;com;android;support;constraint;constraint-layout;1.0.2" \
+	"platforms;android-26" "platforms;android-27" "platforms;android-28"
+ENV PATH ${ANDROID_HOME}/platform-tools:$PATH
+
+
+###############################################################################
+#                       Default Jenkins Dockerfile                          ###
+###############################################################################
 RUN apt-get update && apt-get install -y git curl && rm -rf /var/lib/apt/lists/*
 
 ARG user=jenkins
@@ -44,10 +78,10 @@ COPY init.groovy /usr/share/jenkins/ref/init.groovy.d/tcp-slave-agent-port.groov
 
 # jenkins version being bundled in this docker image
 ARG JENKINS_VERSION
-ENV JENKINS_VERSION ${JENKINS_VERSION:-2.121.1}
+ENV JENKINS_VERSION ${JENKINS_VERSION:-2.121.3}
 
 # jenkins.war checksum, download will be validated using it
-ARG JENKINS_SHA=5bb075b81a3929ceada4e960049e37df5f15a1e3cfc9dc24d749858e70b48919
+ARG JENKINS_SHA=50fbce11fa147d0ecd9ecf36cdae83ef795fb7d4776f33b5ea13bc15bf6e3c13
 
 # Can be used to customize where jenkins.war get downloaded from
 ARG JENKINS_URL=https://repo.jenkins-ci.org/public/org/jenkins-ci/main/jenkins-war/${JENKINS_VERSION}/jenkins-war-${JENKINS_VERSION}.war
